@@ -1,0 +1,45 @@
+
+name: Build Xmoon IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract source
+        run: unzip -q Xmoon-source.zip
+
+      - name: Build Xmoon
+        run: |
+          xcodebuild \
+            -project Xmoon/Xmoon.xcodeproj \
+            -scheme Xmoon \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir Payload
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$APP"
+          cp -R "$APP" Payload/
+          ditto -c -k --keepParent Payload Xmoon.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Xmoon-IPA
+          path: Xmoon.ipa
